@@ -1,0 +1,234 @@
+:root {
+    /* Core Palette */
+    --cyan: #00f3ff;
+    --gold: #ffd700;
+    --red:  #ff3333;
+    --dark: #050505;
+
+    /* UI Layout */
+    --ui-padding: clamp(16px, 3vw, 40px);
+    --ui-font: 'Courier New', Courier, monospace;
+
+    /* Text */
+    --text: rgba(255, 255, 255, 0.92);
+    --muted: rgba(255, 255, 255, 0.65);
+    --faint: rgba(255, 255, 255, 0.45);
+
+    /* Glow */
+    --glow-cyan: rgba(0, 243, 255, 0.45);
+    --glow-red: rgba(255, 51, 51, 0.35);
+    --glow-gold: rgba(255, 215, 0, 0.28);
+
+    /* Reticle */
+    --reticle-size: 26px;
+    --reticle-dot: 6px;
+    --trail-size: 14px;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+html, body {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: radial-gradient(1200px 800px at 50% 55%,
+        rgba(0, 243, 255, 0.04),
+        rgba(255, 215, 0, 0.02),
+        rgba(0, 0, 0, 0.86)
+    );
+    background-color: var(--dark);
+    font-family: var(--ui-font);
+    color: var(--text);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+#canvas-container {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1;
+}
+
+/* =========================
+   UI Layer
+========================= */
+#ui-layer {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 10;
+    pointer-events: none;
+
+    padding: calc(var(--ui-padding) + env(safe-area-inset-top))
+             calc(var(--ui-padding) + env(safe-area-inset-right))
+             calc(var(--ui-padding) + env(safe-area-inset-bottom))
+             calc(var(--ui-padding) + env(safe-area-inset-left));
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+/* Top-left HUD */
+.top-left {
+    max-width: min(520px, 92vw);
+}
+
+.top-left h1 {
+    font-size: clamp(1.25rem, 2.1vw, 2rem);
+    margin: 0 0 10px 0;
+    letter-spacing: 4px;
+    display: inline-block;
+    padding-bottom: 6px;
+
+    border-bottom: 2px solid rgba(0, 243, 255, 0.75);
+    text-shadow: 0 0 18px rgba(0, 243, 255, 0.18);
+}
+
+.status-line {
+    font-size: 0.95rem;
+    opacity: 0.92;
+    margin-bottom: 6px;
+    color: var(--muted);
+}
+
+.status-line span {
+    color: var(--text);
+    text-shadow: 0 0 12px rgba(0, 243, 255, 0.12);
+}
+
+/* Bottom-center command line */
+.bottom-center {
+    text-align: center;
+    margin-bottom: clamp(18px, 4.5vh, 40px);
+}
+
+#formation-name {
+    font-size: clamp(1.6rem, 4.3vw, 3rem);
+    margin: 0;
+    letter-spacing: clamp(2px, 1.1vw, 8px);
+    text-transform: uppercase;
+
+    text-shadow:
+        0 0 20px rgba(0, 243, 255, 0.25),
+        0 0 50px rgba(0, 243, 255, 0.12);
+    transition: color 0.25s ease, text-shadow 0.25s ease;
+}
+
+#gesture-hint {
+    font-size: clamp(0.85rem, 1.6vw, 1rem);
+    opacity: 0.7;
+    margin-top: 10px;
+    letter-spacing: 2px;
+    color: var(--faint);
+}
+
+/* Dynamic Colors based on State */
+.mode-stream { color: var(--cyan); }
+.mode-sphere { color: var(--red); }
+.mode-shield { color: var(--gold); }
+
+/* Mode-specific glow (better readability) */
+#formation-name.mode-stream {
+    text-shadow:
+        0 0 20px var(--glow-cyan),
+        0 0 55px rgba(0, 243, 255, 0.16);
+}
+#formation-name.mode-sphere {
+    text-shadow:
+        0 0 20px var(--glow-red),
+        0 0 55px rgba(255, 51, 51, 0.14);
+}
+#formation-name.mode-shield {
+    text-shadow:
+        0 0 20px var(--glow-gold),
+        0 0 55px rgba(255, 215, 0, 0.12);
+}
+
+/* =========================
+   Reticle (Finger Cursor UI)
+========================= */
+#reticle {
+    position: fixed;
+    left: 0;
+    top: 0;
+    width: var(--reticle-size);
+    height: var(--reticle-size);
+    border-radius: 999px;
+
+    border: 2px solid rgba(0, 243, 255, 0.85);
+    background: rgba(0, 243, 255, 0.06);
+
+    box-shadow:
+        0 0 18px rgba(0, 243, 255, 0.55),
+        0 0 44px rgba(0, 243, 255, 0.14);
+
+    opacity: 0;
+    transition: opacity 0.15s ease;
+    z-index: 9999;
+    pointer-events: none;
+    mix-blend-mode: screen;
+    will-change: transform;
+}
+
+#reticle::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: var(--reticle-dot);
+    height: var(--reticle-dot);
+    transform: translate(-50%, -50%);
+    border-radius: 999px;
+
+    background: rgba(0, 243, 255, 0.9);
+    box-shadow: 0 0 18px rgba(0, 243, 255, 0.85);
+}
+
+.reticle-trail {
+    position: fixed;
+    left: 0;
+    top: 0;
+    width: var(--trail-size);
+    height: var(--trail-size);
+    border-radius: 999px;
+
+    border: 1px solid rgba(0, 243, 255, 0.24);
+    background: rgba(0, 243, 255, 0.03);
+
+    filter: blur(0.4px);
+    opacity: 0;
+
+    z-index: 9998;
+    pointer-events: none;
+    mix-blend-mode: screen;
+    will-change: transform;
+}
+
+/* =========================
+   Responsive Tweaks
+========================= */
+@media (max-width: 768px) {
+    .top-left h1 {
+        letter-spacing: 3px;
+    }
+    #gesture-hint {
+        letter-spacing: 1.5px;
+    }
+}
+
+/* Optional: reduce motion for accessibility */
+@media (prefers-reduced-motion: reduce) {
+    #formation-name {
+        transition: none;
+    }
+    #reticle {
+        transition: none;
+    }
+}
