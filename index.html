@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Spirit Sword Interface</title>
+    <link rel="stylesheet" href="styles.css">
+
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
+</head>
+<body>
+<div id="canvas-container"></div>
+
+<video id="input-video" playsinline style="display: none;"></video>
+
+<div id="ui-layer">
+    <div class="top-left">
+        <h1>SWORD ARRAY</h1>
+        <div class="status-line">System: <span id="sys-status" style="color:#0ff">Online</span></div>
+        <div class="status-line">Hand: <span id="hand-status">Searching...</span></div>
+    </div>
+
+    <div class="bottom-center">
+        <h2 id="formation-name">AWAITING COMMAND</h2>
+        <p id="gesture-hint">Show hand to activate spirit link</p>
+    </div>
+</div>
+
+<script type="module" src="./js/main.js"></script>
+</body>
+</html>
