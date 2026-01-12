@@ -6,28 +6,28 @@ import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js'
 export class SceneManager {
     constructor() {
         this.container = document.getElementById('canvas-container');
-
-        // 1. Setup Basic Scene
+        
+        // 1. 初始化场景
         this.scene = new THREE.Scene();
-        // Fog for depth
-        this.scene.fog = new THREE.FogExp2(0x050505, 0.02);
+        // 稍微加一点迷雾，增强深邃感
+        this.scene.fog = new THREE.FogExp2(0x020202, 0.03);
 
         this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-        this.camera.position.z = 20;
+        this.camera.position.z = 25; // 相机拉远一点，视野更开阔
 
         this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
         this.renderer.setSize(window.innerWidth, window.innerHeight);
         this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
         this.container.appendChild(this.renderer.domElement);
 
-        // 2. State & Objects
+        // 2. 状态管理
         this.swords = [];
-        this.swordCount = 64; // Number of swords
-        this.targetPoint = new THREE.Vector3(0, 0, 0); // Where the hand is
-        this.mode = 'IDLE'; // Current formation mode
+        this.swordCount = 80; // 增加剑的数量，效果更明显
+        this.targetPoint = new THREE.Vector3(0, 0, 0); 
+        this.mode = 'IDLE'; 
         this.time = 0;
 
-        // 3. Init Components
+        // 3. 初始化组件
         this.createSwordMesh();
         this.initPostProcessing();
         this.initStarField();
@@ -36,43 +36,37 @@ export class SceneManager {
     }
 
     createSwordMesh() {
-        // Create a custom "Sword" geometry by merging parts
-        const bladeGeo = new THREE.ConeGeometry(0.1, 3, 4);
-        bladeGeo.rotateX(Math.PI / 2); // Point forward
-        bladeGeo.translate(0, 0, 1.5); // Move center
-
-        const hiltGeo = new THREE.BoxGeometry(0.6, 0.05, 0.2);
-        hiltGeo.translate(0, 0, 0);
-
-        // Use a Group is easier for individual movement logic usually,
-        // but here we clone meshes for performance.
-        const geometry = bladeGeo; // Simplification: Just the blade looks cooler as "energy"
-
-        const material = new THREE.MeshBasicMaterial({
+        // 创建剑的几何体
+        const geometry = new THREE.ConeGeometry(0.12, 4.5, 5); // 稍微修长一点
+        geometry.rotateX(Math.PI / 2); 
+        
+        const material = new THREE.MeshBasicMaterial({ 
             color: 0x00ffff,
-            wireframe: false
         });
 
         for (let i = 0; i < this.swordCount; i++) {
             const sword = new THREE.Mesh(geometry, material.clone());
-
-            // Initial Random Position
+            
+            // 初始随机位置（散得更开）
             sword.position.set(
-                (Math.random() - 0.5) * 40,
-                (Math.random() - 0.5) * 40,
-                (Math.random() - 0.5) * 20 - 5
+                (Math.random() - 0.5) * 60,
+                (Math.random() - 0.5) * 60,
+                (Math.random() - 0.5) * 40 - 10
             );
 
-            // Physics/Identity Properties
+            // 【关键修改】赋予每把剑独特的“性格”
             sword.userData = {
                 id: i,
-                speed: 0.05 + Math.random() * 0.04, // Varied speed
+                // 1. 速度差异极大：有的灵敏(0.06)，有的慵懒(0.01)
+                speed: 0.01 + Math.random() * 0.05, 
+                // 2. 随机偏移范围变大 (x,y,z)
                 randomOffset: new THREE.Vector3(
-                    (Math.random() - 0.5) * 3,
-                    (Math.random() - 0.5) * 3,
-                    (Math.random() - 0.5) * 3
+                    (Math.random() - 0.5) * 15, // 左右散开范围 15
+                    (Math.random() - 0.5) * 15, // 上下散开范围 15
+                    (Math.random() - 0.5) * 10  // 前后层次感
                 ),
-                phase: Math.random() * Math.PI * 2
+                // 3. 游动频率（让它们上下浮动不同步）
+                freq: Math.random() * 2 + 0.5 
             };
 
             this.swords.push(sword);
@@ -83,119 +77,140 @@ export class SceneManager {
     initPostProcessing() {
         this.composer = new EffectComposer(this.renderer);
         this.composer.addPass(new RenderPass(this.scene, this.camera));
-
-        // Heavy Bloom for "Energy" look
+        
+        // 辉光参数微调：范围更大，强度稍低，更柔和
         const bloom = new UnrealBloomPass(
             new THREE.Vector2(window.innerWidth, window.innerHeight),
             1.5, 0.4, 0.85
         );
         bloom.threshold = 0;
-        bloom.strength = 1.2; // Glowing intensity
-        bloom.radius = 0.5;
+        bloom.strength = 1.0; 
+        bloom.radius = 0.8; // 光晕扩散更广
         this.composer.addPass(bloom);
     }
 
     initStarField() {
         const geo = new THREE.BufferGeometry();
         const vertices = [];
-        for(let i=0; i<1000; i++) {
-            vertices.push((Math.random()-0.5)*100, (Math.random()-0.5)*100, (Math.random()-0.5)*50);
+        for(let i=0; i<1500; i++) {
+            vertices.push((Math.random()-0.5)*150, (Math.random()-0.5)*150, (Math.random()-0.5)*100);
         }
         geo.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
-        const mat = new THREE.PointsMaterial({color: 0x555555, size: 0.1});
+        const mat = new THREE.PointsMaterial({color: 0x666666, size: 0.15, transparent: true, opacity: 0.6});
         this.stars = new THREE.Points(geo, mat);
         this.scene.add(this.stars);
     }
 
-    // --- Core Logic: Receive Hand Data ---
     updateTarget(ndcX, ndcY) {
-        // Convert normalized screen coords (-1 to 1) to 3D world coords
-        // Project onto a plane at z=0
+        // 映射坐标，但在Z轴上给一点深度，不要贴在屏幕上
         const vector = new THREE.Vector3(ndcX, ndcY, 0.5);
         vector.unproject(this.camera);
         const dir = vector.sub(this.camera.position).normalize();
-        const distance = -this.camera.position.z / dir.z;
+        const distance = -this.camera.position.z / dir.z; // 投射到 z=0 平面
         const pos = this.camera.position.clone().add(dir.multiplyScalar(distance));
-
-        // Smoothly move target point
-        this.targetPoint.lerp(pos, 0.1);
+        
+        // 目标点本身也可以带一点延迟平滑
+        this.targetPoint.lerp(pos, 0.05);
     }
 
     setMode(mode) {
         this.mode = mode;
     }
 
-    // --- Main Animation Loop ---
     update() {
         this.time += 0.01;
 
-        // Color Palette
+        // 颜色定义
         const colors = {
-            'IDLE': new THREE.Color(0x00ffff), // Cyan
-            'STREAM': new THREE.Color(0x00ffff), // Cyan
-            'SPHERE': new THREE.Color(0xff0000), // Red
-            'SHIELD': new THREE.Color(0xffd700)  // Gold
+            'IDLE': new THREE.Color(0x00ffff), 
+            'STREAM': new THREE.Color(0x00ffff), 
+            'SPHERE': new THREE.Color(0xff3333), 
+            'SHIELD': new THREE.Color(0xffaa00)  
         };
+        // 颜色过渡速度
+        const colorLerpSpeed = 0.05;
+
         const targetColor = colors[this.mode] || colors['IDLE'];
 
-        // Update each sword
         this.swords.forEach(sword => {
             const u = sword.userData;
             let targetPos = new THREE.Vector3();
+            let moveSpeed = u.speed; // 默认使用自身的性格速度
 
-            // --- FORMATION LOGIC ---
-
+            // --- 阵法逻辑 ---
+            
             if (this.mode === 'STREAM') {
-                // Form: Follow the finger like a school of fish
+                // 【核心修改：御剑·流】
+                // 1. 基础目标 = 手指位置 + 个体偏移
                 targetPos.copy(this.targetPoint).add(u.randomOffset);
-                // Add snake-like waviness
-                targetPos.x += Math.sin(this.time * 5 + u.id * 0.1) * 1.0;
-                targetPos.y += Math.cos(this.time * 3 + u.id * 0.1) * 1.0;
+
+                // 2. 加入“呼吸”感：偏移量会随时间慢慢扩大缩小
+                const breathing = Math.sin(this.time * 0.5) * 0.2 + 1; // 0.8 ~ 1.2
+                targetPos.sub(this.targetPoint).multiplyScalar(breathing).add(this.targetPoint);
+
+                // 3. 加入“游动”感：像鱼一样正弦摆动
+                // x, y, z 都在波动，且相位不同(u.id)
+                targetPos.x += Math.sin(this.time * u.freq + u.id) * 2.0; 
+                targetPos.y += Math.cos(this.time * u.freq * 0.8 + u.id) * 2.0;
+                targetPos.z += Math.sin(this.time * 0.5 + u.id) * 3.0; // 深度上也有浮动
+
+                // 4. 速度稍微降低，制造拖尾效果
+                moveSpeed = u.speed * 0.8; 
 
             } else if (this.mode === 'SPHERE') {
-                // Form: Condensed Ball of Energy
-                // Distribute points on sphere
+                // 聚气：非常紧凑，速度极快
                 const phi = Math.acos(-1 + (2 * u.id) / this.swordCount);
                 const theta = Math.sqrt(this.swordCount * Math.PI) * phi;
-                const r = 2.5; // Compact radius
-
-                targetPos.setFromSphericalCoords(r, phi, theta + this.time * 2); // Rotate the sphere
+                const r = 2.0; // 很小的球
+                
+                targetPos.setFromSphericalCoords(r, phi, theta + this.time * 5); // 快速旋转
                 targetPos.add(this.targetPoint);
+                moveSpeed = 0.1; // 强制快速归位
 
             } else if (this.mode === 'SHIELD') {
-                // Form: Rotating Ring / Shield in front of hand
-                const angle = (u.id / this.swordCount) * Math.PI * 2 + this.time * 2;
-                const r = 6;
+                // 盾牌：有序排列
+                const angle = (u.id / this.swordCount) * Math.PI * 2 + this.time;
+                const r = 7;
                 targetPos.set(Math.cos(angle) * r, Math.sin(angle) * r, 0);
                 targetPos.add(this.targetPoint);
+                moveSpeed = 0.05;
 
             } else {
-                // Mode: IDLE (Orbiting center)
-                const angle = u.id * 0.1 + this.time * 0.2;
-                const r = 10 + Math.sin(this.time + u.id)*2;
-                targetPos.set(Math.cos(angle)*r, Math.sin(angle)*r * 0.5, Math.sin(angle + this.time)*5);
+                // 待机：漫天飞舞
+                const angle = u.id * 0.1 + this.time * 0.1;
+                const r = 15 + Math.sin(this.time * 0.5 + u.id)*5;
+                targetPos.set(
+                    Math.cos(angle)*r, 
+                    Math.sin(angle)*r * 0.8, 
+                    Math.sin(angle * 2 + this.time)*8
+                );
+                moveSpeed = 0.02;
             }
 
-            // --- PHYSICS MOVEMENT ---
+            // --- 物理移动 ---
+            
+            // 1. 位置插值 (Lerp)
+            sword.position.lerp(targetPos, moveSpeed);
 
-            // 1. Move towards target (Lerp)
-            sword.position.lerp(targetPos, u.speed);
-
-            // 2. Rotate to face movement direction (LookAt)
-            // We calculate where it will be slightly in future to orient it
-            const lookTarget = targetPos.clone();
-            // If in sphere mode, swords point OUTWARD from center (explosive look)
+            // 2. 朝向计算 (LookAt)
+            // 技巧：我们让它看向“未来一点点的位置”，这样转弯更自然
+            // 如果在 SPHERE 模式，强制剑尖朝外 (杀气)
             if (this.mode === 'SPHERE') {
-                lookTarget.sub(this.targetPoint).normalize().multiplyScalar(10).add(sword.position);
+                const center = this.targetPoint.clone();
+                const outward = sword.position.clone().sub(center).normalize().multiplyScalar(5).add(sword.position);
+                sword.lookAt(outward);
+            } else {
+                // 正常飞行模式：看向目标
+                const lookTarget = targetPos.clone();
+                sword.lookAt(lookTarget);
             }
-            sword.lookAt(lookTarget);
 
-            // 3. Color transition
-            sword.material.color.lerp(targetColor, 0.05);
+            // 3. 颜色变化
+            sword.material.color.lerp(targetColor, colorLerpSpeed);
         });
 
-        // Background rotation
-        this.stars.rotation.z -= 0.0005;
+        // 背景星空旋转
+        this.stars.rotation.z -= 0.0002;
 
         this.composer.render();
     }
